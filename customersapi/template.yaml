@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  customersapi
+
+  Sample SAM Template for customersapi
+
+Globals:
+  Function:
+    Runtime: java8
+    MemorySize: 512
+    Timeout: 30
+    Environment:
+      Variables:
+        CUSTOMERS_TABLE: !Ref CustomersTable
+
+Resources:
+  CustomersTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: Number
+
+  CreateCustomerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: customersapi
+      Handler: com.autobots.aws.lambda.apis.CreateCustomerFunction::createCustomer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CustomersTable
+      Events:
+        customerEvents:
+          Type: Api
+          Properties:
+            Path: /customers
+            Method: POST
+
+  ReadCustomersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: customersapi
+      Handler: com.autobots.aws.lambda.apis.ReadCustomersFunction::getCustomers
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CustomersTable
+      Events:
+        customerEvents:
+          Type: Api
+          Properties:
+            Path: /customers
+            Method: GET
+
+Outputs:
+  CustomersApiUrl:
+    Description: "API Gateway URL for Customers API: "
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/customers"
