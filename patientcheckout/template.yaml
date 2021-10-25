@@ -16,6 +16,9 @@ Globals:
         PATIENT_CHECKOUT_TOPIC: !Ref PatientCheckoutTopic
 
 Resources:
+  ClaimManagementQueue:
+    Type: AWS::SQS::Queue
+
   PatientCheckoutDLQ:
     Type: AWS::SNS::Topic
 
@@ -32,6 +35,9 @@ Resources:
     Properties:
       CodeUri: patientcheckout
       Handler: com.autobots.aws.lambda.s3sns.PatientCheckoutFunction::handler
+      DeadLetterQueue:
+        Type: SNS
+        TargetArn: !Ref PatientCheckoutDLQ
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub ${AWS::StackName}-${AWS::AccountId}-${AWS::Region}
@@ -55,4 +61,25 @@ Resources:
           Properties:
             Topic: !Ref PatientCheckoutTopic
     
-    
+  ErrorHandlingFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: patientcheckout
+      Handler: com.autobots.aws.lambda.s3sns.errorhandling.ErrorHandlingFunction::handler
+      Events:
+        SNSErrorHandlingEvent:
+          Type: SNS # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Topic: !Ref PatientCheckoutDLQ  
+
+  ClaimManagementFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: patientcheckout
+      Handler: com.autobots.aws.lambda.sqs.ClaimManagementFunction::handler
+      Events:
+        SQSClaimManagementEvent:
+          Type: SQS # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Queue: !GetAtt ClaimManagementQueue.Arn
+            BatchSize: 10
