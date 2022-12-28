@@ -1,0 +1,4 @@
+AWS SnapStart
+	- Supported Java 11 onwards
+	- If you have SAM CLI old version installed, please upgrade for snapstart support in SAM template file
+	
